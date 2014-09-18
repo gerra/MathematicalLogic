@@ -8,13 +8,43 @@ const int N = 5000;
 
 int n, ptr;
 string s;
+long long prime[N * N];
+
+void init() {
+    prime[0] = 1;
+    prime[1] = 31;
+    for (int i = 2; i < N * N; i++)
+        prime[i] = prime[i - 1] * prime[1];
+}
 
 struct Node {
+    long long hash;
+    int vertCnt;
     string s;
     Node * l;
     Node * r;
     Node() : l(NULL), r(NULL) {}
-    Node(string s, Node * l, Node * r) : s(s), l(l), r(r) {}
+    Node(string s, Node * l, Node * r) : s(s), l(l), r(r) {
+        vertCnt = 1;
+        int lCnt = 0, rCnt = 0;
+        if (l) {
+            lCnt  = l->vertCnt;
+            vertCnt += lCnt;
+        }
+        if (l) {
+            rCnt  = r->vertCnt;
+            vertCnt += rCnt;
+        }
+        hash = 0;
+        if (l) hash += l->hash;
+        hash *= prime[1];
+        hash += s[0];
+        if (r) {
+            hash *= prime[rCnt];
+            hash += r->hash;
+        }
+
+    }
     ~Node() {
         if (l) delete l;
         if (r) delete r;
@@ -24,14 +54,20 @@ struct Node {
 Node * formulas[N];
 bool wasProofed[N];
 
-// TODO: for 3 Nodes
-bool checkEqual(Node * a, Node * b) {
+bool checkEqualHard(Node * a, Node * b) {
     if ((a->l && !b->l) || (!a->l && b->l)) return false;
     if ((a->r && !b->r) || (!a->r && b->r)) return false;
     if (a->s != b->s) return false;
-    if (a->l && b->l && !checkEqual(a->l, b->l)) return false;
-    if (a->r && b->r && !checkEqual(a->r, b->r)) return false;
+    if (a->l && b->l && !checkEqualHard(a->l, b->l)) return false;
+    if (a->r && b->r && !checkEqualHard(a->r, b->r)) return false;
     return true;
+}
+
+// TODO: for 3 Nodes
+// a != NULL && b != NULL
+bool checkEqual(Node * a, Node * b) {
+    if (a->hash != b->hash) return false;
+    return checkEqualHard(a, b);
 }
 
 Node * parseExpression();
@@ -254,6 +290,7 @@ pair<int, int> checkModusPonens(int id) {
 }
 
 int main() {
+    init();
     ifstream in("input.txt");
     ofstream out("output.txt");
     int counter = 1;
