@@ -240,11 +240,33 @@ bool checkSeventh(Node * v) {
     return false;
 }
 
+// (A->C)->(B->C)->(A|B->C)
 bool checkEighth(Node * v) {
+    if (v && v->s == "->" && v->l && v->l->s == "->" && v->r && v->r->s == "->") {
+        if (v->r->l && v->r->l->s == "->" && v->r->r && v->r->r->s == "->" &&
+                v->r->r->l && v->r->r->l->s == "|") {
+            if (v->l->l && v->l->r && v->r->l->l && v->r->l->r && v->r->r->r &&
+                    v->r->r->l->l && v->r->r->l->r) {
+                return (checkEqual(v->l->l, v->r->r->l->l) &&
+                       checkEqual(v->r->l->l, v->r->r->l->r) &&
+                       checkEqual(v->l->r, v->r->l->r));
+            }
+        }
+    }
     return false;
 }
 
+// (A->B)->(A->!B)->!A
 bool checkNinth(Node * v) {
+    if (v && v->s == "->" && v->l && v->l->s == "->" && v->r && v->r->s == "->") {
+        if (v->r->l && v->r->l->s == "->" && v->r->l->r && v->r->l->r->s == "!" &&
+                v->r->r && v->r->r->s == "!") {
+            if (v->l->l && v->r->l->l && v->r->r->r && v->l->r && v->r->l->r->r) {
+                return (checkEqual(v->l->l, v->r->l->l) && checkEqual(v->l->l, v->r->r->r) &&
+                       checkEqual(v->l->r, v->r->l->r->r));
+            }
+        }
+    }
     return false;
 }
 
