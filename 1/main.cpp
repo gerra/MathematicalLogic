@@ -10,6 +10,15 @@ int n, ptr;
 string s;
 long long prime[N * N];
 
+string getStringWithoutSpaces(const string & s) {
+    string res = "";
+    for (unsigned int i = 0; i < s.length(); i++) {
+        char c = s[i];
+        if (!isspace(c)) res += c;
+    }
+    return res;
+}
+
 void init() {
     prime[0] = 1;
     prime[1] = 31;
@@ -320,27 +329,27 @@ int main() {
         ptr = 0;
         n = s.length();
         if (n == 0) break;
-        cout << "(" << counter << ") " << s;
+        out << "(" << counter << ") " << getStringWithoutSpaces(s);
         try {
             Node * expr = parseExpression();
             formulas[counter - 1] = expr;
             int axiomNumber = checkItIsAxiom(expr);
             if (axiomNumber != -1) {
-                cout << " (ax." << axiomNumber << ")\n";
+                out << " (Сх. акс. " << axiomNumber << ")\n";
                 wasProofed[counter - 1] = true;
             } else {
                 pair<int, int> mp = checkModusPonens(counter - 1);
                 if (mp.first != -1) {
-                    cout << " (M.P. " << mp.first + 1 << ", " << mp.second + 1 << ")\n";
+                    out << " (M.P. " << mp.first + 1 << ", " << mp.second + 1 << ")\n";
                     wasProofed[counter - 1] = true;
                 } else {
-                    cout << " (can't be proofed)\n";
+                    out << " (Не доказано)\n";
                 }
             }
         } catch (char const * err) {
-            cout << err << " in " << s << "\n";
+            out << err << " in " << s << "\n";
         } catch (...) {
-            cout << "something wrong...\n";
+            out << "something wrong...\n";
         }
         counter++;
     }
