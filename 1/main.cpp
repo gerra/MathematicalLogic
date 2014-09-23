@@ -84,36 +84,23 @@ Node * parseDisjuction();
 Node * parseConjuction();
 Node * parseNegation();
 
-void deleteSpaces() {
-    while (ptr < n && s[ptr] == ' ') {
-        ptr++;
-    }
-}
-
 Node * parseNegation() {
-    deleteSpaces();
     char c = s[ptr];
     if (c >= 'A' && c <= 'Z') {
         string name;
         name += c;
         ptr++;
-        deleteSpaces();
         if (ptr < n && s[ptr] >= '0' && s[ptr] <= '9') {
             name += s[ptr++];
-            deleteSpaces();
         }
         return new Node(name, NULL, NULL);
     } else if (c == '!') {
         ptr++;
-        deleteSpaces();
         Node * expr = parseNegation();
-        deleteSpaces();
         return new Node("!", NULL, expr);
     } else if (c == '(') {
         ptr++;
-        deleteSpaces();
         Node * expr = parseExpression();
-        deleteSpaces();
         if (ptr >= n || s[ptr++] != ')') {
             throw ") doesn't exist";
         }
@@ -123,42 +110,30 @@ Node * parseNegation() {
 }
 
 Node * parseConjuction() {
-    deleteSpaces();
     Node * expr = parseNegation();
-    deleteSpaces();
     while (ptr < n && s[ptr] == '&') {
         ptr++;
-        deleteSpaces();
         Node * expr2 = parseNegation();
-        deleteSpaces();
         expr = new Node("&", expr, expr2);
     }
     return expr;
 }
 
 Node * parseDisjuction() {
-    deleteSpaces();
     Node * expr = parseConjuction();
-    deleteSpaces();
     while (ptr < n && s[ptr] == '|') {
         ptr++;
-        deleteSpaces();
         Node * expr2 = parseConjuction();
-        deleteSpaces();
         expr = new Node("|", expr, expr2);
     }
     return expr;
 }
 
 Node * parseExpression() {
-    deleteSpaces();
     Node * expr1 = parseDisjuction();
-    deleteSpaces();
     if (ptr < n && s[ptr] == '-' && s[++ptr] == '>') {
         ptr++;
-        deleteSpaces();
         Node * expr2 = parseExpression();
-        deleteSpaces();
         return new Node("->", expr1, expr2);
     }
     return expr1;
@@ -326,10 +301,11 @@ int main() {
     ofstream out("output.txt");
     int counter = 1;
     while (getline(in, s)) {
+        s = getStringWithoutSpaces(s);
         ptr = 0;
         n = s.length();
         if (n == 0) break;
-        out << "(" << counter << ") " << getStringWithoutSpaces(s);
+        out << "(" << counter << ") " << s;
         try {
             Node * expr = parseExpression();
             formulas[counter - 1] = expr;
