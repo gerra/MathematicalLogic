@@ -166,16 +166,16 @@ void parseTitle(const string & title, vector<Node *> & supposes, Node *& alpha, 
     }
 }
 
-void Print(Node * v, ostream & fout) {
+void Print(Node * v, ostream & fout, bool isMain = true) {
     if (!v) return;
     bool isVariable = v->s[0] >= 'A' && v->s[0] <= 'Z';
-    if (!isVariable) {
+    if (!isVariable && !isMain) {
         fout << "(";
     }
-    Print(v->l, fout);
+    Print(v->l, fout, false);
     fout << v->s;
-    Print(v->r, fout);
-    if (!isVariable) {
+    Print(v->r, fout, false);
+    if (!isVariable && !isMain) {
         fout << ")";
     }
 }
@@ -358,52 +358,44 @@ int main() {
             Node * expr = parseExpression();
             formulas[counter - 1] = expr;
             int axiomNumber = checkItIsAxiom(expr);
+            Node * tmp;
             if (axiomNumber != -1 || checkItIsSuppose(expr, supposes)) {
                 out << "1:\n";
                 // di
                 Print(expr, out); out << "\n";
                 // di -> (a -> di)
-                Print(expr, out); out << "->(";
-                Print(alpha, out); out << "->";
-                Print(expr, out); out << ")\n";
+                tmp = new Node("->", expr, new Node("->", alpha, expr));
+                Print(tmp, out); out << "\n";
+                delete tmp;
             } else if (checkEqual(expr, alpha)) {
                 out << "2:\n";
                 // a -> (a -> a)
-//                Node * tmp = new Node("->", alpha, new Node("->", alpha, alpha));
-//                Print(tmp, out); out << "\n";
-//                delete tmp;
-                Print(alpha, out); out << "->(";
-                Print(alpha, out); out << "->";
-                Print(alpha, out); out << ")\n";
+                tmp = new Node("->", alpha, new Node("->", alpha, alpha));
+                Print(tmp, out); out << "\n";
+                delete tmp;
                 // (a -> (a -> a)) -> (a -> ((a -> a) -> a)) -> (a -> a)
-//                tmp = new Node("->",
-//                               new Node("->", alpha, new Node("->", alpha, alpha)),
-//                               new Node("->",
-//                                        new Node("->", alpha,
-//                                                        new Node ("->", new Node("->", alpha, alpha), alpha)),
-//                                        new Node("->", alpha, alpha)));
-//                Print(tmp, out); out << "\n";
-//                delete tmp;
-                out << "("; Print(alpha, out); out << "->(";
-                Print(alpha, out); out << "->";
-                Print(alpha, out); out << "))->";
-                out << "("; Print(alpha, out); out << "->((";
-                Print(alpha, out); out << "->";
-                Print(alpha, out); out << ")->";
-                Print(alpha, out); out << "))->(";
-                Print(alpha, out); out << "->";
-                Print(alpha, out); out << ")\n";
+                tmp = new Node("->",
+                               new Node("->", alpha, new Node("->", alpha, alpha)),
+                               new Node("->", new Node("->", alpha,
+                                                 new Node ("->",
+                                                           new Node("->", alpha, alpha),
+                                                           alpha)),
+                                        new Node("->", alpha, alpha)));
+                Print(tmp, out); out << "\n";
+                delete tmp;
                 // (a -> ((a -> a) -> a)) -> (a -> a)
-                out << "("; Print(alpha, out); out << "->((";
-                Print(alpha, out); out << "->";
-                Print(alpha, out); out << ")->";
-                Print(alpha, out); out << "))->(";
-                Print(alpha, out); out << "->";
-                Print(alpha, out); out << ")\n";
+                tmp =  new Node("->",
+                                new Node("->", alpha,
+                                        new Node ("->", new Node("->", alpha, alpha),
+                                                  alpha)),
+                                new Node("->", alpha, alpha));
+                Print(tmp, out); out << "\n";
+                delete tmp;
                 // a -> ((a -> a) -> a)
-                Print(alpha, out); out << "->((";
-                Print(alpha, out); out << "->)->";
-                Print(alpha, out); out << ")\n";
+                tmp = new Node("->", alpha,
+                               new Node ("->", new Node("->", alpha, alpha), alpha));
+                Print(tmp, out); out << "\n";
+                delete tmp;
             } else {
                 out << "3:\n";
                 pair<int, int> mp = checkModusPonens(counter - 1);
@@ -411,37 +403,25 @@ int main() {
                     Node * dj = formulas[mp.first];
                     //Node * dk = formulas[mp.second];
                     // (a -> dj) -> ((a -> (dj -> di))) -> (a -> di)
-                    out << "("; Print(alpha, out); out << "->";
-                    Print(dj, out); out << ")->((";
-                    Print(alpha, out); out << "->(";
-                    Print(dj, out); out << "->";
-                    Print(expr, out); out << ")))->(";
-                    Print(alpha, out); out << "->";
-                    Print(expr, out); out << ")\n";
+                    tmp = new Node("->", new Node("->", alpha, dj),
+                                   new Node("->", new Node("->", alpha,
+                                                           new Node("->", dj, expr)),
+                                            new Node("->", alpha, expr)));
+                    Print(tmp, out); out << "\n";
+                    delete tmp;
                     // ((a -> (dj -> di))) -> (a -> di)
-                    out << "(("; Print(alpha, out); out << "->(";
-                    Print(dj, out); out << "->";
-                    Print(expr, out); out << ")))->(";
-                    Print(alpha, out); out << "->";
-                    Print(expr, out); out << ")\n";
+                    tmp = new Node("->", new Node("->", alpha,
+                                                  new Node("->", dj, expr)),
+                                   new Node("->", alpha, expr));
+                    Print(tmp, out); out << "\n";
+                    delete tmp;
                 } else {
                     throw "there is an error in proof";
                 }
             }
-            out << "("; Print(alpha, out); out << ")->(";
-            Print(expr, out); out << ")\n";
-//            if (axiomNumber != -1) {
-//                out << " (Сх. акс. " << axiomNumber << ")\n";
-//                wasProofed[counter - 1] = true;
-//            } else {
-//                pair<int, int> mp = checkModusPonens(counter - 1);
-//                if (mp.first != -1) {
-//                    out << " (M.P. " << mp.first + 1 << ", " << mp.second + 1 << ")\n";
-//                    wasProofed[counter - 1] = true;
-//                } else {
-//                    out << " (Не доказано)\n";
-//                }
-//            }
+            tmp = new Node("->", alpha, expr);
+            Print(tmp, out); out << "\n";
+            delete tmp;
         } catch (char const * err) {
             cerr << err << " in " << s << "\n";
         } catch (...) {
