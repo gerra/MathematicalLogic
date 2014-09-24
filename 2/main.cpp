@@ -30,16 +30,19 @@ void init() {
 struct Node {
     long long hash;
     int vertCnt;
+    int ptrCnt;
     string s;
     Node * l;
     Node * r;
-    Node() : l(NULL), r(NULL) {}
+    Node() : vertCnt(0), ptrCnt(0), l(NULL), r(NULL) {}
     Node(string s, Node * l, Node * r) : s(s), l(l), r(r) {
         vertCnt = 1;
+        ptrCnt = 0;
         int lCnt = 0, rCnt = 0;
         if (l) {
             lCnt  = l->vertCnt;
             vertCnt += lCnt;
+            l->ptrCnt++;
         }
         if (l) {
             rCnt  = r->vertCnt;
@@ -52,12 +55,13 @@ struct Node {
         if (r) {
             hash *= prime[rCnt];
             hash += r->hash;
+            r->ptrCnt++;
         }
 
     }
     ~Node() {
-        if (l) delete l;
-        if (r) delete r;
+        if (l && l->ptrCnt == 0) delete l;
+        if (r && r->ptrCnt == 0) delete r;
     }
 };
 
@@ -163,26 +167,16 @@ void parseTitle(const string & title, vector<Node *> & supposes, Node *& alpha, 
 }
 
 void Print(Node * v, ostream & fout) {
-    if (v->l) {
-        bool isVariable = v->l->s[0] >= 'A' && v->l->s[0] <= 'Z';
-        if (!isVariable) {
-            fout << "(";
-        }
-        Print(v->l, fout);
-        if (!isVariable) {
-            fout << ")";
-        }
+    if (!v) return;
+    bool isVariable = v->s[0] >= 'A' && v->s[0] <= 'Z';
+    if (!isVariable) {
+        fout << "(";
     }
+    Print(v->l, fout);
     fout << v->s;
-    if (v->r) {
-        bool isVariable = v->r->s[0] >= 'A' && v->r->s[0] <= 'Z';
-        if (!isVariable) {
-            fout << "(";
-        }
-        Print(v->r, fout);
-        if (!isVariable) {
-            fout << ")";
-        }
+    Print(v->r, fout);
+    if (!isVariable) {
+        fout << ")";
     }
 }
 
@@ -365,17 +359,31 @@ int main() {
             formulas[counter - 1] = expr;
             int axiomNumber = checkItIsAxiom(expr);
             if (axiomNumber != -1 || checkItIsSuppose(expr, supposes)) {
+                out << "1:\n";
+                // di
                 Print(expr, out); out << "\n";
+                // di -> (a -> di)
                 Print(expr, out); out << "->(";
                 Print(alpha, out); out << "->";
                 Print(expr, out); out << ")\n";
-
             } else if (checkEqual(expr, alpha)) {
+                out << "2:\n";
                 // a -> (a -> a)
+//                Node * tmp = new Node("->", alpha, new Node("->", alpha, alpha));
+//                Print(tmp, out); out << "\n";
+//                delete tmp;
                 Print(alpha, out); out << "->(";
                 Print(alpha, out); out << "->";
                 Print(alpha, out); out << ")\n";
                 // (a -> (a -> a)) -> (a -> ((a -> a) -> a)) -> (a -> a)
+//                tmp = new Node("->",
+//                               new Node("->", alpha, new Node("->", alpha, alpha)),
+//                               new Node("->",
+//                                        new Node("->", alpha,
+//                                                        new Node ("->", new Node("->", alpha, alpha), alpha)),
+//                                        new Node("->", alpha, alpha)));
+//                Print(tmp, out); out << "\n";
+//                delete tmp;
                 out << "("; Print(alpha, out); out << "->(";
                 Print(alpha, out); out << "->";
                 Print(alpha, out); out << "))->";
@@ -397,16 +405,31 @@ int main() {
                 Print(alpha, out); out << "->)->";
                 Print(alpha, out); out << ")\n";
             } else {
+                out << "3:\n";
                 pair<int, int> mp = checkModusPonens(counter - 1);
                 if (mp.first != -1) {
-                    out << "TODO\n";
+                    Node * dj = formulas[mp.first];
+                    //Node * dk = formulas[mp.second];
+                    // (a -> dj) -> ((a -> (dj -> di))) -> (a -> di)
+                    out << "("; Print(alpha, out); out << "->";
+                    Print(dj, out); out << ")->((";
+                    Print(alpha, out); out << "->(";
+                    Print(dj, out); out << "->";
+                    Print(expr, out); out << ")))->(";
+                    Print(alpha, out); out << "->";
+                    Print(expr, out); out << ")\n";
+                    // ((a -> (dj -> di))) -> (a -> di)
+                    out << "(("; Print(alpha, out); out << "->(";
+                    Print(dj, out); out << "->";
+                    Print(expr, out); out << ")))->(";
+                    Print(alpha, out); out << "->";
+                    Print(expr, out); out << ")\n";
                 } else {
                     throw "there is an error in proof";
                 }
             }
-
-            Print(alpha, out); out << "->";
-            Print(expr, out); out << "\n";
+            out << "("; Print(alpha, out); out << ")->(";
+            Print(expr, out); out << ")\n";
 //            if (axiomNumber != -1) {
 //                out << " (Сх. акс. " << axiomNumber << ")\n";
 //                wasProofed[counter - 1] = true;
