@@ -1,13 +1,14 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <map>
+#include <vector>
+#include <stdio.h>
 
 using namespace std;
 
 const int N = 5000;
 
-int n, ptr;
-string s;
 long long prime[N * N];
 
 string getStringWithoutSpaces(const string & s) {
@@ -17,13 +18,6 @@ string getStringWithoutSpaces(const string & s) {
         if (!isspace(c)) res += c;
     }
     return res;
-}
-
-void init() {
-    prime[0] = 1;
-    prime[1] = 31;
-    for (int i = 2; i < N * N; i++)
-        prime[i] = prime[i - 1] * prime[1];
 }
 
 struct Node {
@@ -60,7 +54,14 @@ struct Node {
     }
 };
 
-Node * formulas[N];
+bool isVariable(const string& s) {
+    if (s.size() > 0 && s[0] >= 'A' && s[0] <= 'Z') {
+        return true;
+    }
+    return false;
+}
+
+Node * formulas[N], * axioms[10];
 bool wasProofed[N];
 
 bool checkEqualHard(Node * a, Node * b) {
@@ -75,33 +76,42 @@ bool checkEqualHard(Node * a, Node * b) {
 // TODO: for 3 Nodes
 // a != NULL && b != NULL
 bool checkEqual(Node * a, Node * b) {
+    if (a == NULL && b == NULL) {
+        return true;
+    }
+    if (a == NULL || b == NULL) {
+        return false;
+    }
+    if (a == b) {
+        return true;
+    }
     if (a->hash != b->hash) return false;
     return checkEqualHard(a, b);
 }
 
-Node * parseExpression();
-Node * parseDisjuction();
-Node * parseConjuction();
-Node * parseNegation();
+Node * parseExpression(const string &s, int &ptr);
+Node * parseDisjuction(const string &s, int &ptr);
+Node * parseConjuction(const string &s, int &ptr);
+Node * parseNegation(const string &s, int &ptr);
 
-Node * parseNegation() {
+Node * parseNegation(const string &s, int &ptr) {
     char c = s[ptr];
     if (c >= 'A' && c <= 'Z') {
         string name;
         name += c;
         ptr++;
-        if (ptr < n && s[ptr] >= '0' && s[ptr] <= '9') {
+        if (ptr < s.length() && s[ptr] >= '0' && s[ptr] <= '9') {
             name += s[ptr++];
         }
         return new Node(name, NULL, NULL);
     } else if (c == '!') {
         ptr++;
-        Node * expr = parseNegation();
+        Node * expr = parseNegation(s, ptr);
         return new Node("!", NULL, expr);
     } else if (c == '(') {
         ptr++;
-        Node * expr = parseExpression();
-        if (ptr >= n || s[ptr++] != ')') {
+        Node * expr = parseExpression(s, ptr);
+        if (ptr >= s.length() || s[ptr++] != ')') {
             throw ") doesn't exist";
         }
         return expr;
@@ -109,34 +119,39 @@ Node * parseNegation() {
     throw "incorrect formula";
 }
 
-Node * parseConjuction() {
-    Node * expr = parseNegation();
-    while (ptr < n && s[ptr] == '&') {
+Node * parseConjuction(const string &s, int &ptr) {
+    Node * expr = parseNegation(s, ptr);
+    while (ptr < s.length() && s[ptr] == '&') {
         ptr++;
-        Node * expr2 = parseNegation();
+        Node * expr2 = parseNegation(s, ptr);
         expr = new Node("&", expr, expr2);
     }
     return expr;
 }
 
-Node * parseDisjuction() {
-    Node * expr = parseConjuction();
-    while (ptr < n && s[ptr] == '|') {
+Node * parseDisjuction(const string &s, int &ptr) {
+    Node * expr = parseConjuction(s, ptr);
+    while (ptr < s.length() && s[ptr] == '|') {
         ptr++;
-        Node * expr2 = parseConjuction();
+        Node * expr2 = parseConjuction(s, ptr);
         expr = new Node("|", expr, expr2);
     }
     return expr;
 }
 
-Node * parseExpression() {
-    Node * expr1 = parseDisjuction();
-    if (ptr < n && s[ptr] == '-' && s[++ptr] == '>') {
+Node * parseExpression(const string &s, int &ptr) {
+    Node * expr1 = parseDisjuction(s, ptr);
+    if (ptr < s.length() && s[ptr] == '-' && s[++ptr] == '>') {
         ptr++;
-        Node * expr2 = parseExpression();
+        Node * expr2 = parseExpression(s, ptr);
         return new Node("->", expr1, expr2);
     }
     return expr1;
+}
+
+Node * parseStringToFormula(const string &s) {
+    int ptr = 0;
+    return parseExpression(s, ptr);
 }
 
 void Print(Node * v) {
@@ -153,128 +168,51 @@ void Print(Node * v) {
     }
 }
 
-// A->B->A
-bool checkFirst(Node * v) {
-    if (v && v->s == "->" && v->r && v->r->s == "->") {
-        return (v->l && v->r->r && checkEqual(v->l, v->r->r));
+bool fillMap(Node * formula, Node * template_, map<string, vector<Node *> > &variableMap) {
+    if (formula == NULL && template_ == NULL) {
+        return true;
     }
-    return false;
+    if (formula == NULL || template_ == NULL) {
+        return false;
+    }
+    if (formula == template_) {
+        return true;
+    }
+    const string &tempStr = template_->s;
+    if (isVariable(tempStr)) {
+        variableMap[tempStr].push_back(formula);
+        return true;
+    } else {
+        if (tempStr != formula->s) {
+            return false;
+        }
+        return fillMap(formula->l, template_->l, variableMap) &&
+                fillMap(formula->r, template_->r, variableMap);
+    }
 }
-// (A->B)->(A->B->C)->(A->C)
-bool checkSecond(Node * v) {
-    if (v && v->s == "->" && v->l && v->l->s == "->" && v->r && v->r->s == "->") {
-        if (v->r->l && v->r->l->s == "->" && v->r->r && v->r->r->s == "->") {
-            if (v->r->l->r && v->r->l->r->s == "->") {
-                if (v->l->l && v->l->r && v->r->l->l && v->r->l->r->l && v->r->l->r->r &&
-                        v->r->r->l && v->r->r->r) {
-                    return ((checkEqual(v->l->l, v->r->l->l) && checkEqual(v->r->r->l, v->l->l)) &&
-                            (checkEqual(v->l->r, v->r->l->r->l)) &&
-                            (checkEqual(v->r->r->r, v->r->l->r->r)));
+
+bool checkFormulaIsSimilarToTemplate(Node * formula, Node * template_) {
+    map<string, vector<Node*> > variableMap;
+    if (fillMap(formula, template_, variableMap)) {
+        for (auto& it : variableMap) {
+            vector<Node*> &nodes = it.second;
+            for (Node* node : nodes) {
+                if (!checkEqual(node, *nodes.begin())) {
+                    return false;
                 }
             }
         }
-    }
-    return false;
-}
-
-// A->B->A&B
-bool checkThird(Node * v) {
-    if (v && v->s == "->" && v->r && v->r->s == "->" && v->r->r && v->r->r->s == "&") {
-        if (v->l && v->r->l && v->r->r->l && v->r->r->r) {
-            return (checkEqual(v->l, v->r->r->l) && checkEqual(v->r->l, v->r->r->r));
-        }
-    }
-    return false;
-}
-
-// A&B->A
-bool checkFourth(Node * v) {
-    if (v && v->s == "->" && v->l && v->l->s == "&") {
-        if (v->l->l && v->l->r && v->r) {
-            return checkEqual(v->l->l, v->r);
-        }
-    }
-    return false;
-}
-// A&B->B
-bool checkFifth(Node * v) {
-    if (v && v->s == "->" && v->l && v->l->s == "&") {
-        if (v->l->l && v->l->r && v->r) {
-            return checkEqual(v->l->r, v->r);
-        }
-    }
-    return false;
-}
-// A->A|B
-bool checkSixth(Node * v) {
-    if (v && v->s == "->" && v->r && v->r->s == "|") {
-        if (v->l && v->r->l && v->r->r) {
-          return checkEqual(v->l, v->r->l);
-        }
-    }
-    return false;
-}
-// B->A|B
-bool checkSeventh(Node * v) {
-    if (v && v->s == "->" && v->r && v->r->s == "|") {
-        if (v->l && v->r->l && v->r->r) {
-            return checkEqual(v->l, v->r->r);
-        }
-    }
-    return false;
-}
-
-// (A->C)->(B->C)->(A|B->C)
-bool checkEighth(Node * v) {
-    if (v && v->s == "->" && v->l && v->l->s == "->" && v->r && v->r->s == "->") {
-        if (v->r->l && v->r->l->s == "->" && v->r->r && v->r->r->s == "->" &&
-                v->r->r->l && v->r->r->l->s == "|") {
-            if (v->l->l && v->l->r && v->r->l->l && v->r->l->r && v->r->r->r &&
-                    v->r->r->l->l && v->r->r->l->r) {
-                return (checkEqual(v->l->l, v->r->r->l->l) &&
-                       checkEqual(v->r->l->l, v->r->r->l->r) &&
-                       checkEqual(v->l->r, v->r->l->r));
-            }
-        }
-    }
-    return false;
-}
-
-// (A->B)->(A->!B)->!A
-bool checkNinth(Node * v) {
-    if (v && v->s == "->" && v->l && v->l->s == "->" && v->r && v->r->s == "->") {
-        if (v->r->l && v->r->l->s == "->" && v->r->l->r && v->r->l->r->s == "!" &&
-                v->r->r && v->r->r->s == "!") {
-            if (v->l->l && v->r->l->l && v->r->r->r && v->l->r && v->r->l->r->r) {
-                return (checkEqual(v->l->l, v->r->l->l) && checkEqual(v->l->l, v->r->r->r) &&
-                       checkEqual(v->l->r, v->r->l->r->r));
-            }
-        }
-    }
-    return false;
-}
-
-// !!A->A
-bool checkTenth(Node * v) {
-    if (v && v->s == "->" && v->l && v->l->s == "!" && v->l->r && v->l->r->s == "!") {
-        if (v->r && v->l->r->r) {
-            return checkEqual(v->l->r->r, v->r);
-        }
+        return true;
     }
     return false;
 }
 
 int checkItIsAxiom(Node * v) {
-    if (checkFirst(v)) return 1;
-    else if (checkSecond(v)) return 2;
-    else if (checkThird(v)) return 3;
-    else if (checkFourth(v)) return 4;
-    else if (checkFifth(v)) return 5;
-    else if (checkSixth(v)) return 6;
-    else if (checkSeventh(v)) return 7;
-    else if (checkEighth(v)) return 8;
-    else if (checkNinth(v)) return 9;
-    else if (checkTenth(v)) return 10;
+    for (int i = 0; i < 10; i++) {
+        if (checkFormulaIsSimilarToTemplate(v, axioms[i])) {
+            return i + 1;
+        }
+    }
     return -1;
 }
 
@@ -295,19 +233,37 @@ pair<int, int> checkModusPonens(int id) {
     return make_pair(-1, -1);
 }
 
+
+void init() {
+    prime[0] = 1;
+    prime[1] = 31;
+    for (int i = 2; i < N * N; i++) {
+        prime[i] = prime[i - 1] * prime[1];
+    }
+    axioms[0] = parseStringToFormula("A->B->A");
+    axioms[1] = parseStringToFormula("(A->B)->(A->B->C)->(A->C)");
+    axioms[2] = parseStringToFormula("A->B->A&B");
+    axioms[3] = parseStringToFormula("A&B->A");
+    axioms[4] = parseStringToFormula("A&B->B");
+    axioms[5] = parseStringToFormula("A->A|B");
+    axioms[6] = parseStringToFormula("B->A|B");
+    axioms[7] = parseStringToFormula("(A->C)->(B->C)->(A|B->C)");
+    axioms[8] = parseStringToFormula("(A->B)->(A->!B)->!A");
+    axioms[9] = parseStringToFormula("!!A->A");
+}
+
 int main() {
     init();
     ifstream in("input.txt");
     ofstream out("output.txt");
     int counter = 1;
+    string s;
     while (getline(in, s)) {
         s = getStringWithoutSpaces(s);
-        ptr = 0;
-        n = s.length();
-        if (n == 0) break;
+        if (s.length() == 0) break;
         out << "(" << counter << ") " << s;
         try {
-            Node * expr = parseExpression();
+            Node * expr = parseStringToFormula(s);
             formulas[counter - 1] = expr;
             int axiomNumber = checkItIsAxiom(expr);
             if (axiomNumber != -1) {
@@ -323,9 +279,9 @@ int main() {
                 }
             }
         } catch (char const * err) {
-            out << err << " in " << s << "\n";
+            cout << err << " in " << s << "\n";
         } catch (...) {
-            out << "something wrong...\n";
+            cout << "something wrong...\n";
         }
         counter++;
     }
