@@ -18,7 +18,3 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp
-
-OTHER_FILES += \
-    ../build-1-Qt_5_0_2_qt5-Debug/output.txt \
-    ../build-1-Qt_5_0_2_qt5-Debug/input.txt

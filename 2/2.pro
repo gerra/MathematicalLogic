@@ -12,11 +12,9 @@ TARGET = 2
 CONFIG   += console
 CONFIG   -= app_bundle
 
+QMAKE_CXXFLAGS += -std=c++11
+
 TEMPLATE = app
 
 
 SOURCES += main.cpp
-
-OTHER_FILES += \
-    build-2-Qt_5_0_2_qt5-Debug/output.txt \
-    build-2-Qt_5_0_2_qt5-Debug/input.txt

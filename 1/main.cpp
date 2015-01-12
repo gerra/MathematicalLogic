@@ -26,7 +26,7 @@ struct Node {
     string s;
     Node * l;
     Node * r;
-    Node() : l(NULL), r(NULL) {}
+    Node() : hash(0), l(NULL), r(NULL) {}
     Node(string s, Node * l, Node * r) : s(s), l(l), r(r) {
         vertCnt = 1;
         int lCnt = 0, rCnt = 0;
@@ -55,31 +55,29 @@ struct Node {
 };
 
 bool isVariable(const string& s) {
-    if (s.size() > 0 && s[0] >= 'A' && s[0] <= 'Z') {
+    if (s.length() > 0 && s[0] >= 'A' && s[0] <= 'Z') {
         return true;
     }
     return false;
 }
 
-Node * formulas[N], * axioms[10];
-bool wasProofed[N];
+Node * formulas[N*N], * axioms[10];
+bool wasProofed[N*N];
 
 bool checkEqualHard(Node * a, Node * b) {
-    if ((a->l && !b->l) || (!a->l && b->l)) return false;
-    if ((a->r && !b->r) || (!a->r && b->r)) return false;
+    if (!a && !b) return true;
+    if (!a || !b) return false;
     if (a->s != b->s) return false;
-    if (a->l && b->l && !checkEqualHard(a->l, b->l)) return false;
-    if (a->r && b->r && !checkEqualHard(a->r, b->r)) return false;
+    if (!checkEqualHard(a->l, b->l)) return false;
+    if (!checkEqualHard(a->r, b->r)) return false;
     return true;
 }
 
-// TODO: for 3 Nodes
-// a != NULL && b != NULL
 bool checkEqual(Node * a, Node * b) {
-    if (a == NULL && b == NULL) {
+    if (!a && !b) {
         return true;
     }
-    if (a == NULL || b == NULL) {
+    if (!a || !b) {
         return false;
     }
     if (a == b) {
@@ -275,7 +273,9 @@ int main() {
                     out << " (M.P. " << mp.first + 1 << ", " << mp.second + 1 << ")\n";
                     wasProofed[counter - 1] = true;
                 } else {
-                    out << " (Не доказано)\n";
+                    cout << expr->s << "\n";
+                    cout << " (Не доказано)\n";
+                    return 0;
                 }
             }
         } catch (char const * err) {
