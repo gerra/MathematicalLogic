@@ -44,7 +44,7 @@ struct Node {
             vertCnt += lCnt;
             l->ptrCnt++;
         }
-        if (l) {
+        if (r) {
             rCnt  = r->vertCnt;
             vertCnt += rCnt;
         }
@@ -143,10 +143,10 @@ Node * parseTitle();
 Node * parseExpression(const string &s, int &ptr);
 Node * parseDisjuction(const string &s, int &ptr);
 Node * parseConjuction(const string &s, int &ptr);
-Node * parseNegation(const string &s, int &ptr);
+Node * parseUnary(const string &s, int &ptr);
 void getAA(Node *a, vector<Node*> &proof);
 
-Node * parseNegation(const string &s, int &ptr) {
+Node * parseUnary(const string &s, int &ptr) {
     char c = s[ptr];
     if (c >= 'A' && c <= 'Z') {
         string name;
@@ -158,7 +158,7 @@ Node * parseNegation(const string &s, int &ptr) {
         return new Node(name, NULL, NULL);
     } else if (c == '!') {
         ptr++;
-        Node * expr = parseNegation(s, ptr);
+        Node * expr = parseUnary(s, ptr);
         return notX(expr);
     } else if (c == '(') {
         ptr++;
@@ -172,10 +172,10 @@ Node * parseNegation(const string &s, int &ptr) {
 }
 
 Node * parseConjuction(const string &s, int &ptr) {
-    Node * expr = parseNegation(s, ptr);
+    Node * expr = parseUnary(s, ptr);
     while (ptr < s.length() && s[ptr] == '&') {
         ptr++;
-        Node * expr2 = parseNegation(s, ptr);
+        Node * expr2 = parseUnary(s, ptr);
         expr = new Node("&", expr, expr2);
     }
     return expr;
@@ -205,26 +205,7 @@ Node * parseStringToFormula(const string &s) {
     int ptr = 0;
     return parseExpression(s, ptr);
 }
-void parseTitle(const string & title, vector<Node *> & supposes, Node *& alpha, Node *& betta) {
-    for (unsigned int i = 0; i < title.length(); ) {
-        string s = "";
-        int ptr = 0;
-        while (i < title.length() && title[i] != ',' && title[i] != '|') {
-            s += title[i];
-            i++;
-        }
-        Node * expr = parseExpression(s, ptr);
-        if (title[i] == ',') {
-            i++;
-            supposes.push_back(expr);
-        } else if (title[i] == '|'){
-            i += 2;
-            alpha = expr;
-        } else {
-            betta = expr;
-        }
-    }
-}
+
 
 void Print(Node * v, ostream & fout) {
     if (v) {
@@ -353,6 +334,10 @@ void deduction(
     }
     if (forEnd_ == -1) {
         forEnd_ = formulas.size();
+    }
+
+    if (!checkEqual(formulas[forEnd_ - 1], betta)) {
+        throw "Deduction fail : last formula != betta";
     }
 
     for (int i = forBegin_; i < forEnd_; i++) {
@@ -516,7 +501,7 @@ void makeDerivation(Node *expr, vector<Node*> &proof, const map<string, bool> &v
         expr->eval(values);
     }
 
-    if (isVariable(expr->s)) {
+    if (isVariable(expr->s) || checkItIsAxiom(expr) != -1) {
         proof.push_back(expr);
         if (!expr->lastValue) {
             proof.back() = notX(proof.back());
@@ -546,24 +531,34 @@ void makeDerivation(Node *expr, vector<Node*> &proof, const map<string, bool> &v
             proof.push_back(getAxiom(1, notX(a), expr));
             proof.push_back(proof.back()->r);
 
-            vector<Node*> sup;
-            sup.push_back(notX(a));
-            sup.push_back(notX(b));
-            vector<Node*> tmp;
-            tmp.push_back(notX(a));
-            tmp.push_back(notX(b));
-            tmp.push_back(expr);
-            getAA(a, tmp);
-            implFF(b, a, tmp);
-            tmp.push_back(getAxiom(8, a, b, a));
-            tmp.push_back(tmp.back()->r);
-            tmp.push_back(tmp.back()->r);
-            tmp.push_back(tmp.back()->r);
-            deduction(tmp, sup, expr, a, proof);
 
+            getAA(a, proof);
+            implFF(b, a, proof);
+            proof.push_back(getAxiom(8, a, b, a));
+            proof.push_back(proof.back()->r);
+            proof.push_back(proof.back()->r);
             proof.push_back(getAxiom(9, expr, a));
             proof.push_back(proof.back()->r);
             proof.push_back(proof.back()->r);
+
+//            vector<Node*> sup;
+//            sup.push_back(notX(a));
+//            sup.push_back(notX(b));
+//            vector<Node*> tmp;
+//            tmp.push_back(notX(a));
+//            tmp.push_back(notX(b));
+//            tmp.push_back(expr);
+//            getAA(a, tmp);
+//            implFF(b, a, tmp);
+//            tmp.push_back(getAxiom(8, a, b, a));
+//            tmp.push_back(tmp.back()->r);
+//            tmp.push_back(tmp.back()->r);
+//            tmp.push_back(tmp.back()->r);
+//            deduction(tmp, sup, expr, a, proof);
+
+//            proof.push_back(getAxiom(9, expr, a));
+//            proof.push_back(proof.back()->r);
+//            proof.push_back(proof.back()->r);
         }
     } else if (expr->s == "&") {
         Node *a = expr->l;
@@ -623,7 +618,7 @@ void makeDerivation(Node *expr, vector<Node*> &proof, const map<string, bool> &v
             tmp.push_back(a);
             tmp.push_back(expr);
             tmp.push_back(b);
-            deduction(tmp, sup, expr, notX(expr), proof);
+            deduction(tmp, sup, expr, b, proof);
 
             proof.push_back(getAxiom(9, expr, b));
             proof.push_back(proof.back()->r);

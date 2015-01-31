@@ -274,7 +274,7 @@ int main() {
                     wasProofed[counter - 1] = true;
                 } else {
                     cout << expr->s << "\n";
-                    cout << " (Не доказано)\n";
+                    out << " (Не доказано)\n";
                     return 0;
                 }
             }
