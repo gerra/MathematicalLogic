@@ -646,7 +646,6 @@ void makeDerivation(Node *expr, vector<Node*> &proof, const map<string, bool> &v
     }
 }
 
-ofstream fout("input.txt");
 void exclude(const vector<Node*> &supposes, int supBegin, int supEnd,
              Node *p, Node *a,
              const vector<Node*> &formulas1, const vector<Node*> &formulas2,
@@ -662,11 +661,10 @@ void exclude(const vector<Node*> &supposes, int supBegin, int supEnd,
     proof.push_back(proof.back()->r);
 }
 
-ofstream proofout("proof.txt");
 int main() {
     init();
     ifstream in("input3.txt");
-    ofstream out("output3.txt");
+    ofstream fout("output3.txt");
     vector<Node*> supposes;
     vector<Node*> proof;
     vector<Node*> formulas;
@@ -680,9 +678,7 @@ int main() {
         getAllVariableVariantes(variableVariantes, expr);
 
         for (auto &it : variableVariantes) {
-            cout << "..";
             if (!expr->eval(it)) {
-                cout << "bad set!\n";
                 fout << "Высказывание ложно при ";
                 for (auto var = it.begin(); var != it.end(); ++var) {
                     fout << var->first << "=" << (var->second ? "И" : "Л");
@@ -690,43 +686,16 @@ int main() {
                     --var;
                 }
                 return 0;
-            } else {
-                cout << "good set\n";
             }
-
         }
 
         vector<vector<Node*> > prooves(variableVariantes.size());
         vector<vector<Node*> > supposes(variableVariantes.size());
 
         for (int i = 0; i < variableVariantes.size(); i++) {
-            if (i == 0) cout << "\n";
-
             getSuppose(variableVariantes[i], supposes[i]);
-            cout << "Starting derivation...\n";
-
             makeDerivation(expr, prooves[i], variableVariantes[i]);
-            cout << "...derivation ended\n";
-
-            proofout << "variables: ";
-            for (Node *v : supposes[i]) {
-                proofout << v->getAsString() << " ";
-            }
-            proofout << "\n";
-            for (Node *v : prooves[i]) {
-                proofout << v->getAsString() << "\n";
-            }
-            proofout << "______\n";
-
-            if (i == variableVariantes.size() - 1) cout << "\n";
         }
-
-//        for (auto &a : supposes) {
-//            for (Node *v : a) {
-//                cout << v->getAsString() << " ";
-//            }
-//            cout << "\n";
-//        }
 
         int varCnt = variableVariantes.begin()->size();
         int supStep = 2;
@@ -737,7 +706,6 @@ int main() {
             for (int i = 0, curSupInd = 0; i < prooves.size(); i += 2, curSupInd += supStep) {
                 vector<Node*> newProof;
                 int curIndP = totalCnt - varCnt;
-                cout << "Starting excluding...\n";
                 exclude(
                             supposes[curSupInd],
                             curIndP + 1,
@@ -748,7 +716,6 @@ int main() {
                             prooves[i + 1],
                             newProof
                         );
-                cout << "...excluding ended\n";
                 newProoves.push_back(newProof);
             }
             prooves = newProoves;
@@ -756,16 +723,6 @@ int main() {
             supStep *= 2;
         }
         proof = prooves.back();
-
-//        vector<Node*> pp;
-//        variableVariantes.back()["A"] = false;
-//        variableVariantes.back()["B"] = false;
-//        makeDerivation(expr, pp, variableVariantes.back());
-
-//        vector<Node*> tmp;
-//        getSuppose(variableVariantes.back(), tmp);
-
-//        totalDeduction(pp, tmp, expr, proof);
 
         int c = 0;
         for (Node *v : proof) {

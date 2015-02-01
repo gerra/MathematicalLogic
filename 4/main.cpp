@@ -301,7 +301,6 @@ bool checkIsNotFree(Node *v, const string &x, map<string, int> &bounded) {
 
 bool checkIsNotFree(Node *v, const string &x) {
     map<string, int> bounded;
-    // cout << v->getAsString() << " " << x << "\n";
     return checkIsNotFree(v, x, bounded);
 }
 
@@ -347,11 +346,18 @@ Node *substitute(Node *alpha, const string &x, Node *tetta, map<string, int> &bo
 // alpha[x:=tetta]
 Node *substitute(Node *alpha, const string &x, Node *tetta, bool &isFree) {
     map<string, int> bounded;
-    //cout << "Substituting: ";
-    //cout << alpha->getAsString() << " [" << x << ":=" << tetta->getAsString() << "]" << "\n";
     Node *result = substitute(alpha, x, tetta, bounded, isFree);
-    //cout << "    " << result->getAsString() << "\n";
     return result;
+}
+
+Node *getFormulaFromTemplate(Node *v, Node *a = NULL, Node *b = NULL, Node *c = NULL) {
+    if (!v) return NULL;
+    if (v->s == "A") return a;
+    if (v->s == "B") return b;
+    if (v->s == "C") return c;
+    return new Node(v->s,
+                    getFormulaFromTemplate(v->l, a, b, c),
+                    getFormulaFromTemplate(v->r, a, b, c));
 }
 
 void init() {
@@ -560,20 +566,82 @@ bool checkVarIsFreeInFormula(const string &a, Node *v, bool isFree = true) {
     return false;
 }
 
+Node *getAxiom(int number, Node *a = NULL, Node *b = NULL, Node *c = NULL) {
+    return getFormulaFromTemplate(axioms[number], a, b, c);
+}
+
+void getAA(Node *a, vector<Node*> &proof) {
+    proof.push_back(getAxiom(1, a, a));
+    proof.push_back(getAxiom(1, a, new Node("->", a, a)));
+    proof.push_back(getAxiom(2, a, new Node("->", a, a), a));
+    proof.push_back(proof.back()->r);
+    proof.push_back(proof.back()->r);
+}
+
+void simpleDeduction(
+        const vector<Node*> &formulas,
+        const vector<Node*> &supposes,
+        Node *alpha,
+        Node *betta,
+        vector<Node*> &proof,
+        int supBegin_ = 0, int supEnd_ = -1,
+        int forBegin_ = 0, int forEnd_ = -1) {
+    if (supEnd_ == -1) {
+        supEnd_ = supposes.size();
+    }
+    if (forEnd_ == -1) {
+        forEnd_ = formulas.size();
+    }
+
+    if (!checkEqual(formulas[forEnd_ - 1], betta)) {
+        throw "Deduction fail : last formula != betta";
+    }
+
+    for (int i = forBegin_; i < forEnd_; i++) {
+        Node * expr = formulas[i];
+        int axiomNumber = checkIsAxiom(expr);
+        int proofStart = proof.size();
+        if (axiomNumber != -1 || checkIsSuppose(expr, supposes)) {
+            // di
+            proof.push_back(expr);
+            // di -> (a -> di)
+            proof.push_back(getAxiom(1, expr, alpha));
+            proof.push_back(proof.back()->r);
+        } else if (checkEqual(expr, alpha)) {
+            getAA(alpha, proof);
+        } else {
+            Node *dj = checkIsModusPonens(expr, formulas);
+            if (dj != NULL) {
+                //Node * dk = formulas[mp.second];
+                // (a -> dj) -> ((a -> (dj -> di))) -> (a -> di)
+                proof.push_back(getAxiom(2, alpha, dj, expr));
+                // ((a -> (dj -> di))) -> (a -> di)
+                proof.push_back(proof.back()->r);
+                // a -> di
+                proof.push_back(proof.back()->r);
+            } else {
+                cout << "OOPS: " << "\n" << expr->getAsString() << "\n";
+                throw "there is an error in proof";
+            }
+        }
+    }
+}
+
+
 int main() {
-
-    init();
-    ifstream cin("input4.txt");
-
-    vector<Node*> supposes, formulas;
-    Node *alpha, *betta;
-    string title;
-
-    
-
     int counter = 1;
-    string s;
     try {
+        init();
+        ifstream cin("input4.txt");
+        vector<Node*> supposes, formulas;
+        vector<Node*> proof;
+        Node *alpha = NULL;
+        Node *betta = NULL;
+        string title;
+
+
+        string s;
+
         getline(cin, title);
         bool f = false;
         for (int i = 0; i < title.size() - 1; i++) {
@@ -591,35 +659,45 @@ int main() {
         while (getline(cin, s)) {
             if (s.length() == 0) continue;
             Node *formula = parseStringToFormula(s);
-            cout << s << ": ";
+//            cout << s << ": ";
             formulas.push_back(formula);
             int axiomNumber = -1;
 
             axiomNumber = checkIsAxiom(formula);
             if (axiomNumber != -1) {
-                cout << "axiom " << axiomNumber << "\n";
-                if (axiomNumber == 21 && deduction) {
+//                cout << "axiom " << axiomNumber << "\n";
+                if (axiomNumber == 21 && deduction && alpha != NULL) {
                     if (checkVarIsFreeInFormula(formula->l->r->l->s, alpha)) {
                         throw KvantorError("аксиома", formula->l->r->l->s, alpha);
                     }
                 }
-                if (axiomNumber == 11 && deduction) {
+                if (axiomNumber == 11 && deduction && alpha != NULL) {
                     if (checkVarIsFreeInFormula(formula->l->l->s, alpha)) {
                         throw KvantorError("аксиома", formula->l->l->s, alpha);
                     }
                 }
-                if (axiomNumber == 12 && deduction) {
+                if (axiomNumber == 12 && deduction && alpha != NULL) {
                     if (checkVarIsFreeInFormula(formula->r->l->s, alpha)) {
                         throw KvantorError("аксиома", formula->r->l->s, alpha);
                     }
                 }
-                // check deduction and 2 axioms
+                if (deduction && alpha != NULL) {
+                    proof.push_back(formula);
+                    proof.push_back(getAxiom(1, formula, alpha));
+                    proof.push_back(proof.back()->r);
+                }
             } else if (deduction && checkIsSuppose(formula, supposes)) {
-                cout << "suppose" << "\n";
+//                cout << "suppose" << "\n";
+                if (alpha != NULL) {
+                    proof.push_back(formula);
+                    proof.push_back(getAxiom(1, formula, alpha));
+                    proof.push_back(proof.back()->r);
+                }
             } else if (deduction && checkEqual(formula, alpha)) {
-                cout << "alpha " << "\n";
+//                cout << "alpha " << "\n";
+                getAA(alpha, proof);
             } else if (checkForallRule(formula, formulas)) {
-                cout << "forall rule" << "\n";
+//                cout << "forall rule" << "\n";
                 if (deduction) {
                     if (checkVarIsFreeInFormula(formula->r->l->s, alpha)) {
                         throw KvantorError("правило", formula->r->l->s, alpha);
@@ -628,6 +706,57 @@ int main() {
                 if (checkVarIsFreeInFormula(formula->r->l->s, formula->l)) {
                     throw VariableFreeError(formula->l, formula->r->l->s);
                 }
+
+                vector<Node*> tmpSupposes;
+                vector<Node*> tmpFormulas;
+                vector<Node*> tmpProof;
+
+                Node *A = alpha;
+                Node *B = formula->l;
+                Node *C = formula->r->r;
+                ////////////////////////////////////////////////////
+                /// A->(B->C), A&B |- C ...
+
+                tmpSupposes.push_back(new Node("->", A, new Node("->", B, C)));
+
+                tmpFormulas.push_back(new Node("&", A, B));
+                tmpFormulas.push_back(getAxiom(4, A, B));
+                tmpFormulas.push_back(A);
+                tmpFormulas.push_back(getAxiom(5, A, B));
+                tmpFormulas.push_back(B);
+                tmpFormulas.push_back(tmpSupposes[0]);
+                tmpFormulas.push_back(tmpFormulas.back()->r);
+                tmpFormulas.push_back(tmpFormulas.back()->r);
+
+                simpleDeduction(tmpFormulas, tmpSupposes, tmpFormulas[0], C, proof);
+                cout << "??? " << proof.back()->getAsString() << "\n";
+                /// ... A&B -> C
+                ////////////////////////////////////////////////////
+                /// A&B -> @xC
+                proof.push_back(new Node("->", tmpFormulas[0], formula->r));
+                tmpSupposes.clear();
+                tmpFormulas.clear();
+                ////////////////////////////////////////////////////
+                /// A&B->@xC,A,B |- @xC ...
+
+                tmpSupposes.push_back(proof.back());
+                tmpSupposes.push_back(A);
+
+                tmpFormulas.push_back(A);
+                tmpFormulas.push_back(B);
+                tmpFormulas.push_back(getAxiom(3, A, B));
+                tmpFormulas.push_back(tmpFormulas.back()->r);
+                tmpFormulas.push_back(tmpFormulas.back()->r);
+                tmpFormulas.push_back(tmpSupposes[0]);
+                tmpFormulas.push_back(tmpFormulas.back()->r);
+
+                simpleDeduction(tmpFormulas, tmpSupposes, B, formula->r, tmpProof);
+                /// ... A&B->@xC,A |- B->@xC ...
+                tmpSupposes.pop_back();
+
+                simpleDeduction(tmpProof, tmpSupposes, A, tmpProof.back(), proof);
+                /// ... A->B->@xC
+                ////////////////////////////////////////////////////
             } else if (checkExistsRule(formula, formulas)) {
                 cout << "exists rule" << "\n";
                 if (deduction) {
@@ -638,16 +767,25 @@ int main() {
                 if (checkVarIsFreeInFormula(formula->l->l->s, formula->r)) {
                     throw VariableFreeError(formula->r, formula->l->l->s);
                 }
+
+
+
             } else {
                 Node *v = checkIsModusPonens(formula, formulas);
                 if (v != NULL) {
-                    cout << "modus ponens" << "\n";
+//                    cout << "modus ponens" << "\n";
+                    proof.push_back(getAxiom(2, alpha, v, formula));
+                    proof.push_back(proof.back()->r);
+                    proof.push_back(proof.back()->r);
                 } else {
-                    cout << "uknown stuff" << "\n";
+//                    cout << "uknown stuff" << "\n";
                     throw UnknownError();
                 }
             }
             counter++;
+        }
+        for (Node *formula : proof) {
+            cout << formula->getAsString() << "\n";
         }
     } catch (const SubstituteError &e) {
         cout << "Вывод некорректен начиная с формулы " << counter << ": ";
@@ -670,47 +808,4 @@ int main() {
     cout << "Finish\n";
 
     return 0;
-
-    try {
-        parseTitle("A(x), B(x), C(x) |- D(x)", supposes, alpha, betta);
-        for (Node *v : supposes) {
-            cout << v->getAsString() << "\n";
-        }
-        cout << alpha->getAsString() << "\n";
-        cout << betta->getAsString() << "\n";
-    } catch (const char *c) {
-        cout << c << "\n";
-    }
-
-    return 0;
-/*
-    string s;
-    try {
-        getline(cin, s);
-        Node *v = parseStringToFormula(s);
-        //Node *w = substitute(v, "x", parseStringToFormula("Z(b)"));
-        getline(cin, s);
-        Node *w = parseStringToFormula(s);
-        cout << v->getAsString() << "\n";
-        cout << w->getAsString() << "\n";
-        //cout << w->getAsString() << "\n";
-        //cout << checkFormulaIsSimilarToTemplate(w, v) << "\n";
-        //cout << checkIsAxiom(v) << " axiom\n";
-        vector<Node*> formulas;
-        formulas.push_back(v);
-        cout << "Is forall rule: " << checkExistsRule(w, formulas) << "\n";
-        //cout << checkEqual(parseStringToFormula("A(x)"), parseStringToFormula("A(x,y)")) << "\n";
-    } catch (const string &c) {
-        cout << c << "\n";
-    } catch (const char *c) {
-        cout << c << "\n";
-    } catch (...) {
-        cout << "something wrong\n";
-    }
-
-    //
-    //            )
-
-    return 0;
-*/    
 }
