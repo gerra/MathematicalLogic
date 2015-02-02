@@ -111,7 +111,7 @@ Node * parseNegation(const string &s, int &ptr) {
         string name;
         name += c;
         ptr++;
-        if (ptr < s.length() && s[ptr] >= '0' && s[ptr] <= '9') {
+        while (ptr < s.length() && s[ptr] >= '0' && s[ptr] <= '9') {
             name += s[ptr++];
         }
         return new Node(name, NULL, NULL);

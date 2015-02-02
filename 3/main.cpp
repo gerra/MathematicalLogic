@@ -152,7 +152,7 @@ Node * parseUnary(const string &s, int &ptr) {
         string name;
         name += c;
         ptr++;
-        if (ptr < s.length() && s[ptr] >= '0' && s[ptr] <= '9') {
+        while (ptr < s.length() && s[ptr] >= '0' && s[ptr] <= '9') {
             name += s[ptr++];
         }
         return new Node(name, NULL, NULL);
@@ -663,8 +663,8 @@ void exclude(const vector<Node*> &supposes, int supBegin, int supEnd,
 
 int main() {
     init();
-    ifstream in("input3.txt");
-    ofstream fout("output3.txt");
+    ifstream in("input.txt");
+    ofstream fout("output.txt");
     vector<Node*> supposes;
     vector<Node*> proof;
     vector<Node*> formulas;
