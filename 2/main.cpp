@@ -317,7 +317,7 @@ int main() {
                 int axiomNumber = checkItIsAxiom(expr);
                 Node * tmp;
                 if (axiomNumber != -1 || checkItIsSuppose(expr, supposes)) {
-                    out << "1:\n";
+//                    out << "1:\n";
                     // di
                     Print(expr, out); out << "\n";
                     // di -> (a -> di)
@@ -325,7 +325,7 @@ int main() {
                     Print(tmp, out); out << "\n";
                     delete tmp;
                 } else if (checkEqual(expr, alpha)) {
-                    out << "2:\n";
+//                    out << "2:\n";
                     // a -> (a -> a)
                     tmp = new Node("->", alpha, new Node("->", alpha, alpha));
                     Print(tmp, out); out << "\n";
@@ -354,7 +354,7 @@ int main() {
                     Print(tmp, out); out << "\n";
                     delete tmp;
                 } else {
-                    out << "3:\n";
+//                    out << "3:\n";
                     pair<int, int> mp = checkModusPonens(counter - 1);
                     if (mp.first != -1) {
                         Node * dj = formulas[mp.first];
