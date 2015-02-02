@@ -81,7 +81,7 @@ struct Node {
     }
 };
 
-Node * formulas[N], * axioms[10];
+Node * formulas[N*N], * axioms[10];
 
 bool checkEqualHard(Node * a, Node * b) {
     if ((a->l && !b->l) || (!a->l && b->l)) return false;
