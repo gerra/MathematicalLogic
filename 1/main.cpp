@@ -273,15 +273,14 @@ int main() {
                     out << " (M.P. " << mp.first + 1 << ", " << mp.second + 1 << ")\n";
                     wasProofed[counter - 1] = true;
                 } else {
-                    cout << expr->s << "\n";
                     out << " (Не доказано)\n";
                     return 0;
                 }
             }
         } catch (char const * err) {
-            cout << err << " in " << s << "\n";
+            out << err << " in " << s << "\n";
         } catch (...) {
-            cout << "something wrong...\n";
+            out << "something wrong...\n";
         }
         counter++;
     }

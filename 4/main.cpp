@@ -501,6 +501,7 @@ bool parseTitle(const string &ss, vector<Node*> &supposes, Node *&alpha, Node *&
         if (s[i] == '|' && s[i+1] == '-') {
             int ptr = i + 2;
             betta = parseExpression(s, ptr);
+            if (i == 0) return true;
             const string t = s.substr(0, i);
             ptr = 0;
             while (ptr < t.length()) {
@@ -513,6 +514,7 @@ bool parseTitle(const string &ss, vector<Node*> &supposes, Node *&alpha, Node *&
                 }
                 ptr++;
             }
+
             return true;
         }
     }
@@ -633,14 +635,12 @@ int main() {
     try {
         init();
         ifstream cin("input4.txt");
+        ofstream cout("output4.txt");
         vector<Node*> supposes, formulas;
         vector<Node*> proof;
         Node *alpha = NULL;
         Node *betta = NULL;
         string title;
-
-
-        string s;
 
         getline(cin, title);
         bool f = false;
@@ -656,6 +656,8 @@ int main() {
             cin.seekg(0, ios::beg);
             cin.clear();
         }
+
+        string s;
         while (getline(cin, s)) {
             if (s.length() == 0) continue;
             Node *formula = parseStringToFormula(s);
@@ -698,7 +700,7 @@ int main() {
                 getAA(alpha, proof);
             } else if (checkForallRule(formula, formulas)) {
 //                cout << "forall rule" << "\n";
-                if (deduction) {
+                if (deduction && alpha != NULL) {
                     if (checkVarIsFreeInFormula(formula->r->l->s, alpha)) {
                         throw KvantorError("правило", formula->r->l->s, alpha);
                     }
@@ -706,60 +708,60 @@ int main() {
                 if (checkVarIsFreeInFormula(formula->r->l->s, formula->l)) {
                     throw VariableFreeError(formula->l, formula->r->l->s);
                 }
+                if (deduction && alpha != NULL) {
+                    vector<Node*> tmpSupposes;
+                    vector<Node*> tmpFormulas;
+                    vector<Node*> tmpProof;
 
-                vector<Node*> tmpSupposes;
-                vector<Node*> tmpFormulas;
-                vector<Node*> tmpProof;
+                    Node *A = alpha;
+                    Node *B = formula->l;
+                    Node *C = formula->r->r;
+                    ////////////////////////////////////////////////////
+                    /// A->(B->C), A&B |- C ...
 
-                Node *A = alpha;
-                Node *B = formula->l;
-                Node *C = formula->r->r;
-                ////////////////////////////////////////////////////
-                /// A->(B->C), A&B |- C ...
+                    tmpSupposes.push_back(new Node("->", A, new Node("->", B, C)));
 
-                tmpSupposes.push_back(new Node("->", A, new Node("->", B, C)));
+                    tmpFormulas.push_back(new Node("&", A, B));
+                    tmpFormulas.push_back(getAxiom(4, A, B));
+                    tmpFormulas.push_back(A);
+                    tmpFormulas.push_back(getAxiom(5, A, B));
+                    tmpFormulas.push_back(B);
+                    tmpFormulas.push_back(tmpSupposes[0]);
+                    tmpFormulas.push_back(tmpFormulas.back()->r);
+                    tmpFormulas.push_back(tmpFormulas.back()->r);
 
-                tmpFormulas.push_back(new Node("&", A, B));
-                tmpFormulas.push_back(getAxiom(4, A, B));
-                tmpFormulas.push_back(A);
-                tmpFormulas.push_back(getAxiom(5, A, B));
-                tmpFormulas.push_back(B);
-                tmpFormulas.push_back(tmpSupposes[0]);
-                tmpFormulas.push_back(tmpFormulas.back()->r);
-                tmpFormulas.push_back(tmpFormulas.back()->r);
+                    simpleDeduction(tmpFormulas, tmpSupposes, tmpFormulas[0], C, proof);
+                    /// ... A&B -> C
+                    ////////////////////////////////////////////////////
+                    /// A&B -> @xC
+                    proof.push_back(new Node("->", tmpFormulas[0], formula->r));
+                    tmpSupposes.clear();
+                    tmpFormulas.clear();
+                    ////////////////////////////////////////////////////
+                    /// A&B->@xC,A,B |- @xC ...
 
-                simpleDeduction(tmpFormulas, tmpSupposes, tmpFormulas[0], C, proof);
-                cout << "??? " << proof.back()->getAsString() << "\n";
-                /// ... A&B -> C
-                ////////////////////////////////////////////////////
-                /// A&B -> @xC
-                proof.push_back(new Node("->", tmpFormulas[0], formula->r));
-                tmpSupposes.clear();
-                tmpFormulas.clear();
-                ////////////////////////////////////////////////////
-                /// A&B->@xC,A,B |- @xC ...
+                    tmpSupposes.push_back(proof.back());
+                    tmpSupposes.push_back(A);
 
-                tmpSupposes.push_back(proof.back());
-                tmpSupposes.push_back(A);
+                    tmpFormulas.push_back(A);
+                    tmpFormulas.push_back(B);
+                    tmpFormulas.push_back(getAxiom(3, A, B));
+                    tmpFormulas.push_back(tmpFormulas.back()->r);
+                    tmpFormulas.push_back(tmpFormulas.back()->r);
+                    tmpFormulas.push_back(tmpSupposes[0]);
+                    tmpFormulas.push_back(tmpFormulas.back()->r);
 
-                tmpFormulas.push_back(A);
-                tmpFormulas.push_back(B);
-                tmpFormulas.push_back(getAxiom(3, A, B));
-                tmpFormulas.push_back(tmpFormulas.back()->r);
-                tmpFormulas.push_back(tmpFormulas.back()->r);
-                tmpFormulas.push_back(tmpSupposes[0]);
-                tmpFormulas.push_back(tmpFormulas.back()->r);
+                    simpleDeduction(tmpFormulas, tmpSupposes, B, formula->r, tmpProof);
+                    /// ... A&B->@xC,A |- B->@xC ...
+                    tmpSupposes.pop_back();
 
-                simpleDeduction(tmpFormulas, tmpSupposes, B, formula->r, tmpProof);
-                /// ... A&B->@xC,A |- B->@xC ...
-                tmpSupposes.pop_back();
-
-                simpleDeduction(tmpProof, tmpSupposes, A, tmpProof.back(), proof);
-                /// ... A->B->@xC
-                ////////////////////////////////////////////////////
+                    simpleDeduction(tmpProof, tmpSupposes, A, tmpProof.back(), proof);
+                    /// ... A->B->@xC
+                    ////////////////////////////////////////////////////
+                }
             } else if (checkExistsRule(formula, formulas)) {
-                cout << "exists rule" << "\n";
-                if (deduction) {
+//                cout << "exists rule" << "\n";
+                if (deduction && alpha != NULL) {
                     if (checkVarIsFreeInFormula(formula->l->l->s, alpha)) {
                         throw KvantorError("правило", formula->l->l->s, alpha);
                     }
@@ -767,20 +769,25 @@ int main() {
                 if (checkVarIsFreeInFormula(formula->l->l->s, formula->r)) {
                     throw VariableFreeError(formula->r, formula->l->l->s);
                 }
-
-
-
+                ////////////////////////////////////////////////////
+                ///
+                ///
             } else {
                 Node *v = checkIsModusPonens(formula, formulas);
                 if (v != NULL) {
 //                    cout << "modus ponens" << "\n";
-                    proof.push_back(getAxiom(2, alpha, v, formula));
-                    proof.push_back(proof.back()->r);
-                    proof.push_back(proof.back()->r);
+                    if (deduction && alpha != NULL) {
+                        proof.push_back(getAxiom(2, alpha, v, formula));
+                        proof.push_back(proof.back()->r);
+                        proof.push_back(proof.back()->r);
+                    }
                 } else {
 //                    cout << "uknown stuff" << "\n";
                     throw UnknownError();
                 }
+            }
+            if (!deduction || !alpha) {
+                proof.push_back(formula);
             }
             counter++;
         }
