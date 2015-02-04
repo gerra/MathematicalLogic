@@ -162,6 +162,7 @@ bool checkEqual(Node * a, Node * b) {
     if (!a || !b) return false;
     if (a == b) return true;
     if (a->hash != b->hash) return false;
+    else return true;
     if (a->terms.size() != b->terms.size()) return false;
     if (a->s != b->s) return false;
     for (int i = 0; i < a->terms.size(); i++) {
@@ -427,7 +428,7 @@ int checkIsAxiom(Node *formula) {
             Node *sub = substitute(formula->r->r,
                                    formula->r->l->s,
                                    x, isFree);
-            if (checkEqual(sub, formula->r)) {
+            if (checkEqual(sub, formula->l)) {
                 if (isFree) {
                     return 12;
                 } else {
@@ -632,6 +633,7 @@ void simpleDeduction(
 
 int main() {
     int counter = 1;
+    Node *formula = NULL;
     try {
         init();
         ifstream cin("input4.txt");
@@ -660,7 +662,7 @@ int main() {
         string s;
         while (getline(cin, s)) {
             if (s.length() == 0) continue;
-            Node *formula = parseStringToFormula(s);
+            formula = parseStringToFormula(s);
 //            cout << s << ": ";
             formulas.push_back(formula);
             int axiomNumber = -1;
@@ -718,7 +720,6 @@ int main() {
                     Node *C = formula->r->r;
                     ////////////////////////////////////////////////////
                     /// A->(B->C), A&B |- C ...
-
                     tmpSupposes.push_back(new Node("->", A, new Node("->", B, C)));
 
                     tmpFormulas.push_back(new Node("&", A, B));
@@ -735,11 +736,10 @@ int main() {
                     ////////////////////////////////////////////////////
                     /// A&B -> @xC
                     proof.push_back(new Node("->", tmpFormulas[0], formula->r));
-                    tmpSupposes.clear();
-                    tmpFormulas.clear();
                     ////////////////////////////////////////////////////
                     /// A&B->@xC,A,B |- @xC ...
-
+                    tmpSupposes.clear();
+                    tmpFormulas.clear();
                     tmpSupposes.push_back(proof.back());
                     tmpSupposes.push_back(A);
 
@@ -769,9 +769,55 @@ int main() {
                 if (checkVarIsFreeInFormula(formula->l->l->s, formula->r)) {
                     throw VariableFreeError(formula->r, formula->l->l->s);
                 }
-                ////////////////////////////////////////////////////
-                ///
-                ///
+                if (deduction && alpha != NULL) {
+                    Node *A = alpha;
+                    Node *B = formula->l->r;
+                    Node *C = formula->r;
+                    vector<Node*> tmpSupposes;
+                    vector<Node*> tmpFormulas;
+                    vector<Node*> tmpProof;
+
+                    /// A->B->C |- B->A->C
+                    /// A->B->C, B, A |- C ...
+                    tmpSupposes.push_back(new Node("->", A, new Node("->", B, C)));
+                    tmpSupposes.push_back(B);
+
+                    tmpFormulas.push_back(A);
+                    tmpFormulas.push_back(B);
+                    tmpFormulas.push_back(tmpSupposes[0]);
+                    tmpFormulas.push_back(tmpFormulas.back()->r);
+                    tmpFormulas.push_back(tmpFormulas.back()->r);
+
+                    simpleDeduction(tmpFormulas, tmpSupposes, A, C, tmpProof);
+                    /// ... A->B->C, B |- A->C
+                    tmpSupposes.pop_back();
+
+                    simpleDeduction(tmpProof, tmpSupposes, B, new Node("->", A, C), proof);
+                    /// ... A->B->C |- B->(A->C)
+
+                    /// ?xB->(A->C)
+                    proof.push_back(new Node("->", formula->l, new Node("->", A, C)));
+                    ////////////////////////////////////////////////////
+                    /// ?xB->(A->C) |- A->(?xB->C)
+                    /// ?xB->(A->C), A, ?xB |- C ...
+                    tmpSupposes.clear();
+                    tmpFormulas.clear();
+                    tmpSupposes.push_back(proof.back());
+                    tmpSupposes.push_back(A);
+
+                    tmpFormulas.push_back(A);
+                    tmpFormulas.push_back(tmpSupposes[0]->l);
+                    tmpFormulas.push_back(tmpSupposes[0]);
+                    tmpFormulas.push_back(tmpFormulas.back()->r);
+                    tmpFormulas.push_back(tmpFormulas.back()->r);
+
+                    simpleDeduction(tmpFormulas, tmpSupposes, tmpSupposes[0]->l, C, tmpProof);
+                    /// ... ?xB->(A->C), A |- ?xB->C
+                    tmpSupposes.pop_back();
+                    simpleDeduction(tmpProof, tmpSupposes, A, formula, proof);
+                    /// ... A->(?xB->C)
+                    ////////////////////////////////////////////////////
+                }
             } else {
                 Node *v = checkIsModusPonens(formula, formulas);
                 if (v != NULL) {
