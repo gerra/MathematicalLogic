@@ -441,7 +441,8 @@ int checkIsAxiom(Node *formula) {
     }
 
     for (int i = 13; i <= 20; i++) {
-        if (checkFormulaIsSimilarToTemplate(formula, axioms[i], false)) {
+        //if (checkFormulaIsSimilarToTemplate(formula, axioms[i], false)) {
+        if (checkEqual(formula, axioms[i])) {
             return i;
         }
     }
@@ -634,10 +635,11 @@ void simpleDeduction(
 int main() {
     int counter = 1;
     Node *formula = NULL;
+    ifstream cin("input4.txt");
+    ofstream cout("output4.txt");
     try {
         init();
-        ifstream cin("input4.txt");
-        ofstream cout("output4.txt");
+
         vector<Node*> supposes, formulas;
         vector<Node*> proof;
         Node *alpha = NULL;
@@ -660,7 +662,10 @@ int main() {
         }
 
         string s;
+        int count = 0;
         while (getline(cin, s)) {
+            count++;
+//            if (count == 9) break;
             if (s.length() == 0) continue;
             formula = parseStringToFormula(s);
 //            cout << s << ": ";
@@ -833,6 +838,7 @@ int main() {
                 }
             }
             if (!deduction || !alpha) {
+//                cerr << "?????\n";
                 proof.push_back(formula);
             }
             counter++;
@@ -857,8 +863,8 @@ int main() {
     } catch (const char *c) {
         cout << c << "\n";
     }
-    
-    cout << "Finish\n";
+
+  //  cout << "Finish\n";
 
     return 0;
 }
