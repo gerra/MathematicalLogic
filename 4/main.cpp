@@ -10,6 +10,7 @@ using namespace std;
 
 const int N = 5000;
 
+int count = 0;
 long long prime[N * N];
 
 string getStringWithoutSpaces(const string & s) {
@@ -47,8 +48,10 @@ struct Node {
         }
         hash = 0;
         if (l) hash += l->hash;
-        hash *= prime[1];
-        hash += s[0];
+        for (int i = 0; i < s.length(); i++) {
+            hash *= prime[1];
+            hash += s[i];
+        }
         if (r) {
             hash *= prime[rCnt];
             hash += r->hash;
@@ -58,6 +61,15 @@ struct Node {
     }
     Node(string s, vector<Node*> &terms) : Node(s, NULL, NULL) {
         this->terms = terms;
+        hash = terms[0]->hash;
+        for (int i = 1; i < terms.size(); i++) {
+            hash *= prime[terms[i]->vertCnt];
+            hash += terms[i]->hash;
+        }
+        for (int i = 0; i < s.length(); i++) {
+            hash *= prime[1];
+            hash += s[i];
+        }
     }
 
     ~Node() {
@@ -471,16 +483,23 @@ int checkIsAxiom(Node *formula) {
 bool checkForallRule(Node *v, const vector<Node*> &formulas) {
     if (v->s == "->" && v->r->s == "@") {
         Node *toFind = new Node("->", v->l, v->r->r);
-        if (checkIsNotFree(v->l, v->r->l->s)) {
+       /* if (checkIsNotFree(v->l, v->r->l->s)) {
             for (Node *formula : formulas) {
-                //cout << "1) " << toFind->getAsString() << "\n";
-                //cout << "2) " << formula->getAsString() << "\n";
                 if (checkEqual(toFind, formula)) {
                     return true;
                 }
             }
         } else {
             throw VariableFreeError(v->l, v->r->l->s);
+        }*/
+        for (Node *formula : formulas) {
+            if (checkEqual(toFind, formula)) {
+                if (checkIsNotFree(v->l, v->r->l->s)) {
+                    return true;
+                } else {
+                    throw VariableFreeError(v->l, v->r->l->s);
+                }
+            }
         }
     }
     return false;
@@ -489,7 +508,7 @@ bool checkForallRule(Node *v, const vector<Node*> &formulas) {
 bool checkExistsRule(Node *v, const vector<Node*> &formulas) {
     if (v->s == "->" && v->l->s == "?") {
         Node *toFind = new Node("->", v->l->r, v->r);
-        if (checkIsNotFree(v->r, v->l->l->s)) {
+        /*if (checkIsNotFree(v->r, v->l->l->s)) {
             for (Node *formula : formulas) {
                 if (checkEqual(toFind, formula)) {
                     return true;
@@ -497,6 +516,17 @@ bool checkExistsRule(Node *v, const vector<Node*> &formulas) {
             }
         } else {
             throw VariableFreeError(v->r, v->l->l->s);
+        }*/
+        for (int i = 0; i < formulas.size(); i++) {
+            Node *formula = formulas[i];
+            if (checkEqual(toFind, formula)) {
+                //if (count==228)cout << formula->getAsString() << "\n" << toFind->getAsString() << "\n" << i + 2 << "\n";
+                if (checkIsNotFree(v->r, v->l->l->s)) {
+                    return true;
+                } else {
+                    throw VariableFreeError(v->r, v->l->l->s);
+                }
+            }
         }
     }
     return false;
@@ -667,10 +697,17 @@ int main() {
         }
 
         string s;
-        int count = 0;
+
         while (getline(cin, s)) {
             count++;
-//            if (count == 9) break;
+            //if (count == 224) {
+            //    cout << s << "\n";
+            //}
+            //if (count == 225) {
+            //    cout << s << "\n";
+            //    break;
+            //}
+            //continue;
             if (s.length() == 0) continue;
             formula = parseStringToFormula(s);
 //            cout << s << ": ";
@@ -720,6 +757,13 @@ int main() {
                 if (checkVarIsFreeInFormula(formula->r->l->s, formula->l)) {
                     throw VariableFreeError(formula->l, formula->r->l->s);
                 }
+              //  if (deduction) {
+              //      for (Node *v : supposes) {
+              //          if (checkVarIsFreeInFormula(formula->r->l->s, v)) {
+              //              throw VariableFreeError(v, formula->r->l->s);
+              //          }
+              //      }
+              //  }
                 if (deduction && alpha != NULL) {
                     vector<Node*> tmpSupposes;
                     vector<Node*> tmpFormulas;
@@ -779,6 +823,13 @@ int main() {
                 if (checkVarIsFreeInFormula(formula->l->l->s, formula->r)) {
                     throw VariableFreeError(formula->r, formula->l->l->s);
                 }
+             //   if (deduction) {
+             //       for (Node *v : supposes) {
+             //           if (checkVarIsFreeInFormula(formula->l->l->s, v)) {
+             //               throw VariableFreeError(v, formula->l->l->s);
+             //           }
+             //       }
+             //   }
                 if (deduction && alpha != NULL) {
                     Node *A = alpha;
                     Node *B = formula->l->r;
