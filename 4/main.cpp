@@ -403,6 +403,7 @@ int checkIsAxiom(Node *formula) {
         Node *x = getFirstNotBound(formula->r,
                                    formula->l->r,
                                    formula->l->l->s);
+                                   //cout << x << "\n";
         if (x) {
             bool isFree = true;
             Node *sub = substitute(formula->l->r,
@@ -417,6 +418,8 @@ int checkIsAxiom(Node *formula) {
                                           x);
                 }
             }
+        } else {
+            if (checkEqual(formula->l->r, formula->r)) return 11;
         }
     }
     if (checkFormulaIsSimilarToTemplate2(formula, axioms[12])) {
@@ -437,6 +440,8 @@ int checkIsAxiom(Node *formula) {
                                           x);
                 }
             }
+        } else {
+            if (checkEqual(formula->r->r, formula->l)) return 12;
         }
     }
 
