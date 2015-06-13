@@ -1,0 +1,92 @@
+!?p(p*0'''=0''''')
+...
+!(p*0'''=0''''')->!?p(p*0'''=0''''')
+
+//p*0'''=0'''''->p*0''+p=0'''''
+//p*0''+p=0'''''->p*0'+p+p=0'''''
+//p*0'+p+p=0'''''->p*0+p+p+p=0'''''
+//p*0+p+p+p=0'''''->p+p+p=0'''''
+
+
+!(0+0+0=0''''')&@x(!(x+x+x=0''''')->!(x'+x'+x'=0'''''))->!(p+p+p=0''''')
+.................................
+
+.................................
+!(p+p+p=0''''')
+(p*0+p+p+p=0''''')=(p+p+p=0''''')                                    (deleteZero)
+(p*0+p+p+p=0''''')=(p+p+p=0''''')->(p+p+p=0''''')=(p*0+p+p+p=0''''') (swapeq)
+(p+p+p=0''''')=(p*0+p+p+p=0''''')
+negImplNeg
+(p+p+p=0''''')=(p*0+p+p+p=0''''')->!(p+p+p=0''''')=!(p*0+p+p+p=0''''')
+!(p+p+p=0''''')=!(p*0+p+p+p=0''''')
+!(p*0+p+p+p=0''''')
+...etc... (incmultwithadd)
+
+!(p*0'''=0''''')
+
+---
+negImplNeg
+a=c, !(a=b) |- !(c=b)
+a=c
+a=c->c=a (swap)
+c=a
+c=a->c=b->a=b (rename 14)
+c=b->a=b
+!(a=b)
+!(a=b)->(c=b)->!(a=b)
+(c=b)->!(a=b)
+((c=b)->(a=b))->((c=b)->!(a=b))->!(c=b)
+((c=b)->!(a=b))->!(c=b)
+!(c=b)
+
+----
+incMult
+a*b'=c->a*b+a=c
+
+a*b'=c|-a*b+a=c
+a*b'=a*b+a
+a*b'=c
+a*b'=a*b+a->a*b'=c->a*b+a=c
+a*b'=c->a*b+a=c
+a*b+a=c
+a*b'=c->a*b+a=c (ded)
+
+
+--
+incMultWithAdd
+a*b'+c=d->a*b+a+c=d
+
+a*b'+c=d|-a*b+a+c=d
+a*b'+c=d
+a*b'=a*b+a
+a*b'+c=a*b+a+c (addProperty c005 to c)
+a*b'+c=a*b+a+c->a*b'+c=d->a*b+a+c=d
+a*b'+c=d->a*b+a+c=d
+a*b+a+c=d
+
+a*b'+c=d->a*b+a+c=d (ded)
+
+--
+deleteZero
+a*0+k=d->k=d
+
+a*0+k=d|-k=d
+a*0=0
+a*0+k=0+k (addProperty)
+a*0+k=0+k->a*0+k=d->0+k=d
+a*0+k=d->0+k=d
+0+k=d
+
+
+
+(0+k=k)->(0+k=d)->k=d
+(0+k=d)->k=d
+k=d
+
+
+
+--
+swapAdds
+
+a+b=b+a
+
