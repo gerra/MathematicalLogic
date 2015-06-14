@@ -50,6 +50,7 @@ vector<Tree*> allTrees;
 struct Tree {
     World world;
     vector<Tree *> trees;
+    int posInArray, childId;
     bool exist;
 
     Tree() {
@@ -73,7 +74,9 @@ struct Tree {
     }
 
     void addWorld(const World &world) {
+        childId = trees.size();
         trees.push_back(new Tree(world));
+        posInArray = allTrees.size();
         allTrees.push_back(trees.back());
     }
 
@@ -157,11 +160,12 @@ void generateTrees(Tree *curKripke, vector<World> &worlds) {
     for (int i = 1; i < worlds.size(); i++) {
         if (curKripke->getWorld() < worlds[i] && curKripke->getWorld().isSubsetOf(worlds[i])) {
             curKripke->addWorld(worlds[i]);
+            generateTrees(curKripke->trees.back(), worlds);
         }
     }
-    for (auto *tree : curKripke->trees) {
-        generateTrees(tree, worlds);
-    }
+//    for (auto *tree : curKripke->trees) {
+//          generateTrees(tree, worlds);
+//    }
 }
 
 bool check(Node *formula, int pos) {
@@ -174,7 +178,18 @@ bool check(Node *formula, int pos) {
         return false;
     }
     allTrees[pos]->exist = false;
-    if (!check(formula, pos+1)) {
+
+//    if (!check(formula, pos+1)) {
+//        return false;
+//    }
+
+    int nxt = allTrees[pos]->childId + 1;
+    if (nxt < allTrees[pos]->trees.size()) {
+        nxt = allTrees[pos]->trees[nxt]->posInArray;
+    } else {
+        nxt = pos+1;
+    }
+    if (!check(formula, nxt)) {
         return false;
     }
     return true;
@@ -188,7 +203,7 @@ void generateTrees(vector<World> &worlds) {
 
 int main() {
     ifstream cin("input5.in");
-    ofstream cout("output5.out");
+//    ofstream cout("output5.out");
     try {
         string s;
         getline(cin, s);
@@ -201,6 +216,7 @@ int main() {
 
         vector<World> worlds = generateWorlds(formula);
         generateTrees(worlds);
+
         if (!check(formula, 0)) {
             cout << "Контрмодель:\n";
             allTrees[0]->print(cout);
