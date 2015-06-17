@@ -157,7 +157,9 @@ vector<World> generateWorlds(Node *formula) {
 }
 
 void generateTrees(Tree *curKripke, vector<World> &worlds) {
-    curKripke->addWorld(worlds[0]);
+    if (curKripke->getWorld().getForcedVars().size() == 0) {
+        curKripke->addWorld(worlds[0]);
+    }
     for (int i = 1; i < worlds.size(); i++) {
         if (curKripke->getWorld() < worlds[i] && curKripke->getWorld().isSubsetOf(worlds[i])) {
             curKripke->addWorld(worlds[i]);
