@@ -157,6 +157,7 @@ vector<World> generateWorlds(Node *formula) {
 }
 
 void generateTrees(Tree *curKripke, vector<World> &worlds) {
+    curKripke->addWorld(worlds[0]);
     for (int i = 1; i < worlds.size(); i++) {
         if (curKripke->getWorld() < worlds[i] && curKripke->getWorld().isSubsetOf(worlds[i])) {
             curKripke->addWorld(worlds[i]);
@@ -173,10 +174,7 @@ bool check(Node *formula, int pos) {
         bool result = allTrees[0]->checkFormula(formula);
         return result;
     }
-    allTrees[pos]->exist = true;
-    if (!check(formula, pos+1)) {
-        return false;
-    }
+
     allTrees[pos]->exist = false;
 
 //    if (!check(formula, pos+1)) {
@@ -190,6 +188,12 @@ bool check(Node *formula, int pos) {
         nxt = pos+1;
     }
     if (!check(formula, nxt)) {
+        return false;
+    }
+
+
+    allTrees[pos]->exist = true;
+    if (!check(formula, pos+1)) {
         return false;
     }
     return true;
